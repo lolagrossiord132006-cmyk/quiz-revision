@@ -148,6 +148,16 @@
   .answer-reveal{font-size:16px; color:var(--accent-dark); font-weight:600; line-height:1.5; display:none;}
   .answer-reveal.show{display:block;}
 
+  .grade-row{display:none; gap:10px; width:100%; margin-top:6px;}
+  .grade-row.show{display:flex;}
+  .grade-btn{
+    flex:1; border:1.5px solid var(--line); border-radius:12px; padding:12px 10px; font-size:13.5px;
+    font-weight:600; cursor:pointer; font-family:inherit; background:#FAFAF7; color:var(--text);
+  }
+  .grade-btn.correct.picked{background:#E9F5E6; border-color:var(--accent); color:var(--accent-dark);}
+  .grade-btn.wrong.picked{background:#FBEEEB; border-color:var(--accent2); color:#B4482F;}
+  .grade-btn:disabled{opacity:.55; cursor:default;}
+
   .fiche-link{display:inline-block; margin-top:14px; font-size:12.5px; color:var(--accent2); text-decoration:none;}
 
   .next-btn{
@@ -162,9 +172,10 @@
   .recap p{color:var(--text-dim); font-size:14px; margin-bottom:26px;}
   .recap .restart{
     background:var(--accent); color:white; border:none; padding:13px 24px; border-radius:12px;
-    font-size:14.5px; font-weight:600; cursor:pointer; font-family:inherit; margin:0 6px;
+    font-size:14.5px; font-weight:600; cursor:pointer; font-family:inherit; margin:0 6px 10px;
   }
   .recap .ghost{background:transparent; color:var(--accent-dark); border:1.5px solid var(--line);}
+  .recap .review-errors{background:var(--accent2);}
 </style>
 </head>
 <body>
@@ -234,6 +245,7 @@ let currentQuiz = null;
 let currentQuestions = [];
 let currentIndex = 0;
 let score = 0;
+let wrongQuestions = [];
 let pendingOptions = { type: 'tout', shuffle: false };
 let pendingQuizId = null;
 
@@ -396,6 +408,7 @@ function openQuiz(idQuiz, options){
   currentQuestions = qs;
   currentIndex = 0;
   score = 0;
+  wrongQuestions = [];
   showScreen('sessionScreen');
   document.getElementById('sessionName').textContent = currentQuiz ? currentQuiz.Titre : '';
   renderCard();
@@ -442,6 +455,10 @@ function renderCard(){
     html += `<div class="flip-zone">
       <button class="flip-btn" id="flipBtn" onclick="flipCard()">Voir la réponse</button>
       <div class="answer-reveal" id="answerReveal">${escapeHtml(row.Bonne_Reponse)}</div>
+      <div class="grade-row" id="gradeRow">
+        <button class="grade-btn correct" onclick="gradeFlashcard(true, this)">✅ Je savais</button>
+        <button class="grade-btn wrong" onclick="gradeFlashcard(false, this)">❌ À revoir</button>
+      </div>
     </div>`;
     if(row.Lien_Fiche && row.Lien_Fiche.trim()){
       html += `<a class="fiche-link" href="${row.Lien_Fiche}" target="_blank">📄 Voir la fiche</a>`;
@@ -459,14 +476,27 @@ function answerQCM(btn, correct){
     s.disabled = true;
     if(s.dataset.letter === correct) s.classList.add('correct');
   });
-  if(letter !== correct) btn.classList.add('wrong');
-  else score++;
+  if(letter !== correct){
+    btn.classList.add('wrong');
+    wrongQuestions.push(currentQuestions[currentIndex]);
+  } else {
+    score++;
+  }
   document.getElementById('nextBtn').classList.add('show');
 }
 
 function flipCard(){
   document.getElementById('answerReveal').classList.add('show');
   document.getElementById('flipBtn').style.display = 'none';
+  document.getElementById('gradeRow').classList.add('show');
+}
+
+function gradeFlashcard(isCorrect, btn){
+  const row = btn.parentElement.querySelectorAll('.grade-btn');
+  row.forEach(b => b.disabled = true);
+  btn.classList.add('picked');
+  if(isCorrect) score++;
+  else wrongQuestions.push(currentQuestions[currentIndex]);
   document.getElementById('nextBtn').classList.add('show');
 }
 
@@ -478,16 +508,30 @@ function nextCard(){
 function renderRecap(){
   document.getElementById('progressFill').style.width = '100%';
   document.getElementById('sessionPos').textContent = 'Terminé';
-  const hasQCM = currentQuestions.some(q => (q.Type||'').trim().toLowerCase() === 'qcm');
   markDone(currentQuiz.ID_Quiz);
+  const total = currentQuestions.length;
+  const errorBtn = wrongQuestions.length > 0
+    ? `<br><button class="restart review-errors" onclick="reviewErrors()">🔁 Revoir mes erreurs (${wrongQuestions.length})</button>`
+    : '';
   document.getElementById('cardZone').innerHTML = `
     <div class="recap">
-      <div class="big">🎉</div>
+      <div class="big">${wrongQuestions.length === 0 ? '🎉' : '💪'}</div>
       <h2>Quiz terminé !</h2>
-      <p>${hasQCM ? `Score : ${score} / ${currentQuestions.filter(q=>(q.Type||'').trim().toLowerCase()==='qcm').length} bonnes réponses` : `${currentQuestions.length} cartes revues`}</p>
+      <p>Score : ${score} / ${total} bonnes réponses</p>
+      ${errorBtn}
+      <br>
       <button class="restart" onclick="openOptions('${escapeAttr(currentQuiz.ID_Quiz)}')">Recommencer</button>
       <button class="restart ghost" onclick="goHome()">Retour aux quiz</button>
     </div>`;
+}
+
+function reviewErrors(){
+  currentQuestions = wrongQuestions.slice();
+  wrongQuestions = [];
+  currentIndex = 0;
+  score = 0;
+  document.getElementById('sessionName').textContent = (currentQuiz ? currentQuiz.Titre : '') + ' — Révision des erreurs';
+  renderCard();
 }
 
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
