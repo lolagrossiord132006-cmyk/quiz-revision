@@ -188,6 +188,23 @@
   }
   .recap .ghost{background:transparent; color:var(--accent-dark); border:1.5px solid var(--line);}
   .recap .review-errors{background:var(--accent2);}
+
+  .revision-jour{margin-bottom:20px; border:1.5px solid var(--accent);}
+
+  .stats-total{
+    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+    margin-bottom:18px; font-size:14px; font-weight:600; color:var(--accent-dark);
+    display:flex; align-items:center; gap:8px;
+  }
+  .stats-list{display:flex; flex-direction:column; gap:10px;}
+  .stats-row{
+    display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--line);
+    border-radius:var(--radius); padding:14px 16px;
+  }
+  .stats-row-info{flex:1; min-width:0;}
+  .stats-row-name{font-size:14.5px; font-weight:600;}
+  .stats-row-count{font-size:12px; color:var(--text-dim);}
+  .stats-row-pct{font-size:18px; font-weight:700;}
 </style>
 </head>
 <body>
@@ -196,10 +213,16 @@
   <!-- HOME -->
   <div id="homeScreen" class="screen active">
     <header class="home">
-      <h1><i class="ti ti-school"></i> Révisions</h1>
-      <div class="sub">Choisis un quiz pour commencer</div>
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+        <div>
+          <h1><i class="ti ti-school"></i> Révisions</h1>
+          <div class="sub">Choisis un quiz pour commencer</div>
+        </div>
+        <div class="back-btn" onclick="openStats()" aria-label="Statistiques"><i class="ti ti-chart-bar"></i></div>
+      </div>
     </header>
     <div id="status" class="status">Chargement…</div>
+    <div id="revisionJourSection"></div>
     <select id="anneeSelect" class="matiere-select" style="display:none;" onchange="onAnneeChange()"></select>
     <select id="matiereSelect" class="matiere-select" style="display:none;" onchange="renderHome()"></select>
     <div id="progressSection"></div>
@@ -242,6 +265,14 @@
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
     <div id="cardZone"></div>
   </div>
+  <!-- STATS -->
+  <div id="statsScreen" class="screen">
+    <div class="top-bar">
+      <div class="back-btn" onclick="goHome()"><i class="ti ti-arrow-left"></i></div>
+      <div class="top-title">Statistiques</div>
+    </div>
+    <div id="statsContent"></div>
+  </div>
 
 </div>
 
@@ -249,6 +280,10 @@
 const SHEET_ID = "1yTjT6wCStPIL9E-JoCJfIWe8XOwjKSNOBmQvjL7MaDw";
 const API_BASE = "https://opensheet.elk.sh/" + SHEET_ID;
 const STORAGE_KEY = "revisions_done_quizzes";
+const SRS_KEY = "revisions_srs";
+const STATS_KEY = "revisions_stats";
+const SESSIONS_KEY = "revisions_sessions_count";
+const INTERVALS = [1, 3, 7, 15, 30];
 
 const MATIERE_PALETTE = [
   { accent:"#6E8360", dark:"#4F6144", tint:"#E9EDE4" },
@@ -292,6 +327,7 @@ let score = 0;
 let wrongQuestions = [];
 let pendingOptions = { type: 'tout', shuffle: false };
 let pendingQuizId = null;
+let isSrsSession = false;
 
 const statusEl = document.getElementById('status');
 const homeContent = document.getElementById('homeContent');
@@ -306,6 +342,59 @@ function markDone(idQuiz){
   const s = getDoneSet();
   s.add(String(idQuiz));
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...s]));
+}
+
+function todayStr(){ return new Date().toISOString().slice(0, 10); }
+function addDays(dateStr, n){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function getSrsMap(){ try{ return JSON.parse(localStorage.getItem(SRS_KEY)) || {}; }catch(e){ return {}; } }
+function saveSrsMap(map){ localStorage.setItem(SRS_KEY, JSON.stringify(map)); }
+
+function recordSrs(questionId, correct){
+  const map = getSrsMap();
+  const key = String(questionId);
+  const entry = map[key] || { idx: -1 };
+  const idx = correct ? Math.min(entry.idx + 1, INTERVALS.length - 1) : 0;
+  map[key] = { idx, next: addDays(todayStr(), INTERVALS[idx]) };
+  saveSrsMap(map);
+}
+
+function getDueQuestions(){
+  const map = getSrsMap();
+  const today = todayStr();
+  return allQuestions.filter(q => {
+    const entry = map[String(q.ID_Question)];
+    return entry && entry.next <= today;
+  });
+}
+
+function getStatsMap(){ try{ return JSON.parse(localStorage.getItem(STATS_KEY)) || {}; }catch(e){ return {}; } }
+function saveStatsMap(map){ localStorage.setItem(STATS_KEY, JSON.stringify(map)); }
+
+function recordStats(matiere, correct){
+  const map = getStatsMap();
+  const entry = map[matiere] || { correct: 0, total: 0 };
+  entry.total++;
+  if(correct) entry.correct++;
+  map[matiere] = entry;
+  saveStatsMap(map);
+}
+
+function incSessionsCount(){
+  const n = parseInt(localStorage.getItem(SESSIONS_KEY) || '0', 10);
+  localStorage.setItem(SESSIONS_KEY, String(n + 1));
+}
+function getSessionsCount(){
+  return parseInt(localStorage.getItem(SESSIONS_KEY) || '0', 10);
+}
+
+function getMatiereForQuestion(q){
+  const quiz = allQuizzes.find(qz => String(qz.ID_Quiz).trim() === String(q.ID_Quiz).trim());
+  return quiz ? getMatiere(quiz) : 'Autre';
 }
 
 Promise.all([
@@ -363,7 +452,22 @@ function setupMatiereSelectForAnnee(){
   if([...matiereSelect.options].some(o => o.value === prevVal)) matiereSelect.value = prevVal;
 }
 
+function renderRevisionJour(){
+  const dueCount = getDueQuestions().length;
+  const el = document.getElementById('revisionJourSection');
+  el.innerHTML = dueCount > 0 ? `
+    <div class="quiz-card revision-jour" onclick="startRevisionDuJour()">
+      <span class="quiz-icon" style="background:var(--accent); color:#fff;"><i class="ti ti-calendar-due"></i></span>
+      <div class="quiz-info">
+        <div class="quiz-title">Révision du jour</div>
+        <div class="quiz-count">${dueCount} question${dueCount>1?'s':''} à revoir</div>
+      </div>
+      <i class="ti ti-chevron-right quiz-arrow"></i>
+    </div>` : '';
+}
+
 function renderHome(){
+  renderRevisionJour();
   if(allQuizzes.length === 0){
     homeContent.innerHTML = '<div class="empty">Aucun quiz pour l\'instant.<br>Ajoute une ligne dans l\'onglet "Quiz" de ton Sheet.</div>';
     progressSection.innerHTML = '';
@@ -484,6 +588,7 @@ function startQuizWithOptions(){
 
 /* ---------- SESSION ---------- */
 function openQuiz(idQuiz, options){
+  isSrsSession = false;
   currentQuiz = allQuizzes.find(q => String(q.ID_Quiz).trim() === String(idQuiz).trim());
   let qs = allQuestions.filter(q => String(q.ID_Quiz).trim() === String(idQuiz).trim());
 
@@ -509,6 +614,18 @@ function shuffleArray(arr){
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+function startRevisionDuJour(){
+  isSrsSession = true;
+  currentQuiz = null;
+  currentQuestions = shuffleArray(getDueQuestions());
+  currentIndex = 0;
+  score = 0;
+  wrongQuestions = [];
+  showScreen('sessionScreen');
+  document.getElementById('sessionName').textContent = 'Révision du jour';
+  renderCard();
 }
 
 function renderCard(){
@@ -565,12 +682,16 @@ function answerQCM(btn, correct){
     s.disabled = true;
     if(s.dataset.letter === correct) s.classList.add('correct');
   });
-  if(letter !== correct){
+  const row = currentQuestions[currentIndex];
+  const isCorrect = letter === correct;
+  if(!isCorrect){
     btn.classList.add('wrong');
-    wrongQuestions.push(currentQuestions[currentIndex]);
+    wrongQuestions.push(row);
   } else {
     score++;
   }
+  recordSrs(row.ID_Question, isCorrect);
+  recordStats(getMatiereForQuestion(row), isCorrect);
   document.getElementById('nextBtn').classList.add('show');
 }
 
@@ -581,11 +702,14 @@ function flipCard(){
 }
 
 function gradeFlashcard(isCorrect, btn){
-  const row = btn.parentElement.querySelectorAll('.grade-btn');
-  row.forEach(b => b.disabled = true);
+  const gradeBtns = btn.parentElement.querySelectorAll('.grade-btn');
+  gradeBtns.forEach(b => b.disabled = true);
   btn.classList.add('picked');
+  const row = currentQuestions[currentIndex];
   if(isCorrect) score++;
-  else wrongQuestions.push(currentQuestions[currentIndex]);
+  else wrongQuestions.push(row);
+  recordSrs(row.ID_Question, isCorrect);
+  recordStats(getMatiereForQuestion(row), isCorrect);
   document.getElementById('nextBtn').classList.add('show');
 }
 
@@ -597,19 +721,21 @@ function nextCard(){
 function renderRecap(){
   document.getElementById('progressFill').style.width = '100%';
   document.getElementById('sessionPos').textContent = 'Terminé';
-  markDone(currentQuiz.ID_Quiz);
+  if(!isSrsSession && currentQuiz) markDone(currentQuiz.ID_Quiz);
+  incSessionsCount();
   const total = currentQuestions.length;
   const errorBtn = wrongQuestions.length > 0
     ? `<br><button class="restart review-errors" onclick="reviewErrors()"><i class="ti ti-refresh"></i> Revoir mes erreurs (${wrongQuestions.length})</button>`
     : '';
+  const restartBtn = isSrsSession ? '' : `<button class="restart" onclick="openOptions('${escapeAttr(currentQuiz.ID_Quiz)}')">Recommencer</button>`;
   document.getElementById('cardZone').innerHTML = `
     <div class="recap">
       <div class="big"><i class="ti ${wrongQuestions.length === 0 ? 'ti-trophy' : 'ti-target-arrow'}"></i></div>
-      <h2>Quiz terminé !</h2>
+      <h2>${isSrsSession ? 'Révision terminée !' : 'Quiz terminé !'}</h2>
       <p>Score : ${score} / ${total} bonnes réponses</p>
       ${errorBtn}
       <br>
-      <button class="restart" onclick="openOptions('${escapeAttr(currentQuiz.ID_Quiz)}')">Recommencer</button>
+      ${restartBtn}
       <button class="restart ghost" onclick="goHome()">Retour aux quiz</button>
     </div>`;
 }
@@ -621,6 +747,37 @@ function reviewErrors(){
   score = 0;
   document.getElementById('sessionName').textContent = (currentQuiz ? currentQuiz.Titre : '') + ' — Révision des erreurs';
   renderCard();
+}
+
+function openStats(){
+  renderStats();
+  showScreen('statsScreen');
+}
+
+function renderStats(){
+  const statsMap = getStatsMap();
+  const sessions = getSessionsCount();
+  const matieres = Object.keys(statsMap);
+  let html = `<div class="stats-total"><i class="ti ti-calendar-stats"></i> ${sessions} session${sessions>1?'s':''} terminée${sessions>1?'s':''} au total</div>`;
+  if(matieres.length === 0){
+    html += '<div class="empty">Pas encore de statistiques — réponds à quelques questions d\'abord.</div>';
+  } else {
+    html += '<div class="stats-list">' + matieres.map(m => {
+      const s = statsMap[m];
+      const pct = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+      const style = getMatiereStyle(m);
+      const icon = getMatiereIcon(m);
+      return `<div class="stats-row">
+        <span class="quiz-icon" style="background:${style.tint}; color:${style.dark};"><i class="ti ${icon}"></i></span>
+        <div class="stats-row-info">
+          <div class="stats-row-name">${escapeHtml(m)}</div>
+          <div class="stats-row-count">${s.total} question${s.total>1?'s':''} répondue${s.total>1?'s':''}</div>
+        </div>
+        <div class="stats-row-pct" style="color:${style.dark};">${pct}%</div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  document.getElementById('statsContent').innerHTML = html;
 }
 
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
