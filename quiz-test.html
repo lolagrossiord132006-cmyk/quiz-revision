@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Révisions — Test</title>
+<style>
+  :root{
+    --bg:#F5F6F1; --card:#FFFFFF; --text:#2E3327; --text-dim:#8C9A7E;
+    --accent:#6E8360; --accent2:#D97B5F; --line:#E4E7DE;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:var(--bg); color:var(--text); min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:520px; margin:0 auto;}
+  header{margin-bottom:20px;}
+  h1{font-size:22px; margin:0 0 4px; color:var(--accent);}
+  .sub{color:var(--text-dim); font-size:13px;}
+  .status{
+    background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:18px;
+    font-size:13px; color:var(--text-dim); border:1px solid var(--line);
+  }
+  .status.error{color:#C0392B; border-color:#F0C4BE; background:#FBEEEB;}
+  .card{
+    background:var(--card); border-radius:16px; padding:20px; margin-bottom:16px;
+    border:1px solid var(--line); box-shadow:0 2px 8px rgba(46,51,39,0.04);
+  }
+  .tag{
+    display:inline-block; font-size:10.5px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.05em; padding:3px 10px; border-radius:20px; margin-bottom:10px;
+  }
+  .tag.qcm{background:#E9EDE4; color:var(--accent);}
+  .tag.flashcard{background:#FBE9E2; color:var(--accent2);}
+  .question{font-size:16px; font-weight:600; margin-bottom:14px; line-height:1.4;}
+  .choice{
+    display:block; width:100%; text-align:left; background:#FAFAF7; border:1.5px solid var(--line);
+    border-radius:10px; padding:11px 14px; margin-bottom:8px; font-size:14px; color:var(--text);
+    cursor:pointer; font-family:inherit;
+  }
+  .choice:active{transform:scale(0.98);}
+  .choice.correct{background:#E9F5E6; border-color:var(--accent); color:#3D5A34; font-weight:600;}
+  .choice.wrong{background:#FBEEEB; border-color:var(--accent2); color:#B4482F;}
+  .flip-btn{
+    background:var(--accent); color:white; border:none; padding:11px 18px; border-radius:10px;
+    font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .answer{
+    margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);
+    font-size:14.5px; color:var(--accent); font-weight:600; display:none;
+  }
+  .answer.show{display:block;}
+  .fiche-link{display:inline-block; margin-top:10px; font-size:12.5px; color:var(--accent2);}
+  .empty{text-align:center; color:var(--text-dim); padding:40px 20px; font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎓 Quiz Révisions</h1>
+    <div class="sub">Prototype de test — lu en direct depuis ton Google Sheets</div>
+  </header>
+  <div id="status" class="status">Chargement des questions…</div>
+  <div id="content"></div>
+</div>
+
+<script>
+const SHEET_ID = "1yTjT6wCStPIL9E-JoCJfIWe8XOwjKSNOBmQvjL7MaDw";
+const SHEET_TAB = "Questions";
+const API_URL = `https://opensheet.elk.sh/${SHEET_ID}/${SHEET_TAB}`;
+
+const statusEl = document.getElementById('status');
+const contentEl = document.getElementById('content');
+
+function render(rows){
+  const valid = rows.filter(r => r.Question && r.Question.trim());
+  if(valid.length === 0){
+    contentEl.innerHTML = '<div class="empty">Aucune question trouvée. Vérifie que ton Sheet a bien des colonnes : ID_Question, ID_Quiz, Type, Question, Choix_A, Choix_B, Choix_C, Bonne_Reponse, Lien_Fiche</div>';
+    return;
+  }
+  contentEl.innerHTML = valid.map((row, i) => {
+    const type = (row.Type || '').trim().toLowerCase();
+    const isQCM = type === 'qcm';
+    let inner = `<span class="tag ${isQCM ? 'qcm' : 'flashcard'}">${isQCM ? 'QCM' : 'Flashcard'}</span>
+      <div class="question">${escapeHtml(row.Question)}</div>`;
+
+    if(isQCM){
+      const choices = [['A', row.Choix_A], ['B', row.Choix_B], ['C', row.Choix_C]].filter(c => c[1] && c[1].trim());
+      inner += choices.map(([letter, text]) =>
+        `<button class="choice" data-letter="${letter}" data-correct="${(row.Bonne_Reponse||'').trim()}" onclick="handleChoice(this)">${escapeHtml(text)}</button>`
+      ).join('');
+    } else {
+      inner += `<button class="flip-btn" onclick="this.nextElementSibling.classList.add('show'); this.style.display='none';">Voir la réponse</button>
+        <div class="answer">${escapeHtml(row.Bonne_Reponse)}</div>`;
+    }
+
+    if(row.Lien_Fiche && row.Lien_Fiche.trim()){
+      inner += `<br><a class="fiche-link" href="${row.Lien_Fiche}" target="_blank">📄 Voir la fiche</a>`;
+    }
+
+    return `<div class="card">${inner}</div>`;
+  }).join('');
+}
+
+function handleChoice(btn){
+  const correct = btn.dataset.correct;
+  const letter = btn.dataset.letter;
+  const siblings = btn.parentElement.querySelectorAll('.choice');
+  siblings.forEach(s => {
+    s.disabled = true;
+    if(s.dataset.letter === correct) s.classList.add('correct');
+  });
+  if(letter !== correct) btn.classList.add('wrong');
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+fetch(API_URL)
+  .then(res => {
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  })
+  .then(data => {
+    statusEl.textContent = `✅ ${data.length} question(s) chargée(s) depuis ton Sheet`;
+    render(data);
+  })
+  .catch(err => {
+    statusEl.className = 'status error';
+    statusEl.textContent = "❌ Impossible de charger le Sheet. Vérifie que le partage est sur \"Toute personne disposant du lien\" et que l'onglet s'appelle bien \"Questions\".";
+    console.error(err);
+  });
+</script>
+</body>
+</html>
