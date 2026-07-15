@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Révisions">
 <meta name="theme-color" content="#F5F6F1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/dist/tabler-icons.min.css">
 <style>
   :root{
     --bg:#F5F6F1; --card:#FFFFFF; --text:#2E3327; --text-dim:#8C9A7E;
@@ -24,8 +25,16 @@
   @media (min-width: 700px){
     .wrap{max-width:760px;}
   }
+  @media (min-width: 1100px){
+    .wrap[data-screen="homeScreen"]{max-width:1400px;}
+  }
   .screen{display:none;}
-  .screen.active{display:block;}
+  .screen.active{display:block; animation:fadeIn .25s ease both;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  @keyframes popIn{from{opacity:0; transform:translateY(8px) scale(.98);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion: reduce){
+    .screen.active, .quiz-card, .card{animation:none !important;}
+  }
 
   /* ---------- HOME ---------- */
   header.home{margin-bottom:20px;}
@@ -51,7 +60,7 @@
   .rings-row{display:flex; gap:14px; flex-wrap:wrap;}
   .ring-item{
     background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 10px;
-    display:flex; flex-direction:column; align-items:center; gap:8px; flex:1; min-width:92px;
+    display:flex; flex-direction:column; align-items:center; gap:8px; flex:1; min-width:92px; max-width:160px;
   }
   .ring-svg{width:64px; height:64px;}
   .ring-svg .track{fill:none; stroke:var(--line); stroke-width:6;}
@@ -68,20 +77,23 @@
   }
   .quiz-grid{display:grid; grid-template-columns:1fr; gap:10px;}
   @media (min-width: 700px){
-    .quiz-grid{grid-template-columns:1fr 1fr;}
+    .quiz-grid{grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));}
   }
   .quiz-card{
     background:var(--card); border-radius:var(--radius); padding:18px 20px; margin-bottom:0;
     border:1px solid var(--line); cursor:pointer; display:flex; align-items:center; gap:14px;
-    transition:transform .12s; position:relative;
+    transition:transform .12s; position:relative; opacity:0; animation:popIn .3s ease both;
   }
   .quiz-card:active{transform:scale(0.98);}
-  .quiz-emoji{font-size:26px; flex-shrink:0;}
+  .quiz-icon{
+    width:42px; height:42px; border-radius:12px; flex-shrink:0; font-size:19px;
+    display:flex; align-items:center; justify-content:center;
+  }
   .quiz-info{flex:1; min-width:0;}
   .quiz-title{font-size:15.5px; font-weight:600; margin-bottom:3px; display:flex; align-items:center; gap:6px;}
   .quiz-count{font-size:12px; color:var(--text-dim);}
-  .quiz-arrow{color:var(--text-dim); font-size:18px;}
-  .done-badge{font-size:12px; color:var(--accent);}
+  .quiz-arrow{color:var(--text-dim); font-size:16px;}
+  .done-badge{font-size:13px;}
 
   .empty{text-align:center; color:var(--text-dim); padding:50px 20px; font-size:14px;}
 
@@ -119,7 +131,7 @@
   .card{
     background:var(--card); border-radius:22px; padding:26px 22px; margin-bottom:18px;
     border:1px solid var(--line); box-shadow:0 4px 16px rgba(46,51,39,0.05);
-    min-height:220px; display:flex; flex-direction:column;
+    min-height:220px; display:flex; flex-direction:column; animation:popIn .25s ease both;
   }
   .tag{
     display:inline-block; align-self:flex-start; font-size:10.5px; font-weight:700; text-transform:uppercase;
@@ -179,12 +191,12 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="wrap" data-screen="homeScreen">
 
   <!-- HOME -->
   <div id="homeScreen" class="screen active">
     <header class="home">
-      <h1>🎓 Révisions</h1>
+      <h1><i class="ti ti-school"></i> Révisions</h1>
       <div class="sub">Choisis un quiz pour commencer</div>
     </header>
     <div id="status" class="status">Chargement…</div>
@@ -197,7 +209,7 @@
   <!-- OPTIONS -->
   <div id="optionsScreen" class="screen">
     <div class="top-bar">
-      <div class="back-btn" onclick="goHome()">←</div>
+      <div class="back-btn" onclick="goHome()"><i class="ti ti-arrow-left"></i></div>
       <div class="top-title" id="optQuizTitle"></div>
     </div>
     <div class="opt-group">
@@ -221,7 +233,7 @@
   <!-- SESSION -->
   <div id="sessionScreen" class="screen">
     <div class="top-bar">
-      <div class="back-btn" onclick="goHome()">←</div>
+      <div class="back-btn" onclick="goHome()"><i class="ti ti-arrow-left"></i></div>
       <div class="session-title">
         <div class="name" id="sessionName"></div>
         <div class="pos" id="sessionPos"></div>
@@ -238,7 +250,38 @@ const SHEET_ID = "1yTjT6wCStPIL9E-JoCJfIWe8XOwjKSNOBmQvjL7MaDw";
 const API_BASE = "https://opensheet.elk.sh/" + SHEET_ID;
 const STORAGE_KEY = "revisions_done_quizzes";
 
-const EMOJIS = ["📘","🧠","🔬","📗","🩺","📙","🦻","📕"];
+const MATIERE_PALETTE = [
+  { accent:"#6E8360", dark:"#4F6144", tint:"#E9EDE4" },
+  { accent:"#D97B5F", dark:"#B4482F", tint:"#FBE9E2" },
+  { accent:"#C9A227", dark:"#96791C", tint:"#F7F0D8" },
+  { accent:"#5C7A8A", dark:"#3F5866", tint:"#E4EDF0" },
+  { accent:"#8C5B7A", dark:"#6B4560", tint:"#F0E4EC" },
+  { accent:"#7A8450", dark:"#5A6339", tint:"#EEF0DE" }
+];
+const ICON_RULES = [
+  [/math|calcul|alg[eè]bre/i, "ti-math"],
+  [/bio|anat|physio/i, "ti-dna-2"],
+  [/m[ée]canique|physi/i, "ti-atom-2"],
+  [/chimie/i, "ti-flask"],
+  [/anglais|langue|espagnol|allemand/i, "ti-language"],
+  [/info|programme|code|python/i, "ti-code"],
+  [/histoire|g[ée]o/i, "ti-map"],
+  [/audi|oreille|son/i, "ti-ear"],
+  [/onde|signal/i, "ti-wave-sine"],
+  [/droit|juridique/i, "ti-scale"]
+];
+const ICON_FALLBACK = ["ti-book-2","ti-notebook","ti-bulb","ti-target","ti-compass","ti-puzzle"];
+
+function getMatiereStyle(matiere){
+  const idx = Math.abs(hashCode(matiere)) % MATIERE_PALETTE.length;
+  return MATIERE_PALETTE[idx];
+}
+
+function getMatiereIcon(matiere){
+  const rule = ICON_RULES.find(([re]) => re.test(matiere));
+  if(rule) return rule[1];
+  return ICON_FALLBACK[Math.abs(hashCode(matiere)) % ICON_FALLBACK.length];
+}
 
 let allQuizzes = [];
 let allQuestions = [];
@@ -277,7 +320,7 @@ Promise.all([
   renderHome();
 }).catch(err => {
   statusEl.className = 'status error';
-  statusEl.textContent = "❌ Impossible de charger les données. Vérifie le partage du Sheet et les noms d'onglets (\"Quiz\" et \"Questions\").";
+  statusEl.innerHTML = "<i class=\"ti ti-alert-circle\"></i> Impossible de charger les données. Vérifie le partage du Sheet et les noms d'onglets (\"Quiz\" et \"Questions\").";
   console.error(err);
 });
 
@@ -356,12 +399,17 @@ function renderHome(){
       const r = 26, circ = 2 * Math.PI * r;
       const dash = circ * (pct/100);
       const isComplete = total > 0 && done === total;
+      const style = getMatiereStyle(matiere);
+      const icon = getMatiereIcon(matiere);
       return `<div class="ring-item">
         <svg class="ring-svg" viewBox="0 0 64 64">
           <circle class="track" cx="32" cy="32" r="${r}"></circle>
-          <circle class="fill ${isComplete?'complete':''}" cx="32" cy="32" r="${r}"
+          <circle class="fill" cx="32" cy="32" r="${r}"
+            style="stroke:${isComplete?style.dark:style.accent}"
             stroke-dasharray="${dash} ${circ}"></circle>
-          <text x="32" y="37" text-anchor="middle" class="ring-center" style="transform:none;">${isComplete?'✓':pct+'%'}</text>
+          <foreignObject x="16" y="16" width="32" height="32">
+            <i class="ti ${isComplete?'ti-check':icon}" style="font-size:16px; color:${style.dark}; display:flex; align-items:center; justify-content:center; height:100%;"></i>
+          </foreignObject>
         </svg>
         <div class="ring-name">${escapeHtml(matiere)}</div>
         <div class="ring-count">${done}/${total}</div>
@@ -373,21 +421,22 @@ function renderHome(){
   const groupsToShow = selected === '__all__' ? Object.entries(byMatiere) : Object.entries(byMatiere).filter(([m]) => m === selected);
 
   homeContent.innerHTML = groupsToShow.map(([matiere, quizzes]) => {
-    const cards = quizzes.map((q) => {
+    const style = getMatiereStyle(matiere);
+    const icon = getMatiereIcon(matiere);
+    const cards = quizzes.map((q, i) => {
       const count = allQuestions.filter(qu => String(qu.ID_Quiz).trim() === String(q.ID_Quiz).trim()).length;
-      const emoji = EMOJIS[Math.abs(hashCode(q.Titre || '')) % EMOJIS.length];
       const isDone = doneSet.has(String(q.ID_Quiz));
-      return `<div class="quiz-card" onclick="openOptions('${escapeAttr(q.ID_Quiz)}')">
-        <span class="quiz-emoji">${emoji}</span>
+      return `<div class="quiz-card" style="animation-delay:${i*40}ms" onclick="openOptions('${escapeAttr(q.ID_Quiz)}')">
+        <span class="quiz-icon" style="background:${style.tint}; color:${style.dark};"><i class="ti ${icon}"></i></span>
         <div class="quiz-info">
-          <div class="quiz-title">${escapeHtml(q.Titre || 'Sans titre')} ${isDone ? '<span class="done-badge">✓</span>' : ''}</div>
+          <div class="quiz-title">${escapeHtml(q.Titre || 'Sans titre')} ${isDone ? `<i class="ti ti-check done-badge" style="color:${style.dark}"></i>` : ''}</div>
           <div class="quiz-count">${count} question${count>1?'s':''}</div>
         </div>
-        <span class="quiz-arrow">›</span>
+        <i class="ti ti-chevron-right quiz-arrow"></i>
       </div>`;
     }).join('');
     return `<div class="matiere-group">
-      <div class="matiere-label">${escapeHtml(matiere)}</div>
+      <div class="matiere-label" style="color:${style.dark};"><i class="ti ${icon}"></i> ${escapeHtml(matiere)}</div>
       <div class="quiz-grid">${cards}</div>
     </div>`;
   }).join('');
@@ -402,6 +451,7 @@ function hashCode(str){
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  document.getElementById('wrap').dataset.screen = id;
 }
 
 function goHome(){
@@ -487,7 +537,7 @@ function renderCard(){
       `<button class="choice" data-letter="${letter}" onclick="answerQCM(this,'${escapeAttr((row.Bonne_Reponse||'').trim())}')">${escapeHtml(text)}</button>`
     ).join('');
     if(row.Lien_Fiche && row.Lien_Fiche.trim()){
-      html += `<a class="fiche-link" href="${row.Lien_Fiche}" target="_blank">📄 Voir la fiche</a>`;
+      html += `<a class="fiche-link" href="${row.Lien_Fiche}" target="_blank"><i class="ti ti-file-text"></i> Voir la fiche</a>`;
     }
     html += `</div><button class="next-btn" id="nextBtn" onclick="nextCard()">Suivant</button>`;
   } else {
@@ -495,12 +545,12 @@ function renderCard(){
       <button class="flip-btn" id="flipBtn" onclick="flipCard()">Voir la réponse</button>
       <div class="answer-reveal" id="answerReveal">${escapeHtml(row.Bonne_Reponse)}</div>
       <div class="grade-row" id="gradeRow">
-        <button class="grade-btn correct" onclick="gradeFlashcard(true, this)">✅ Je savais</button>
-        <button class="grade-btn wrong" onclick="gradeFlashcard(false, this)">❌ À revoir</button>
+        <button class="grade-btn correct" onclick="gradeFlashcard(true, this)"><i class="ti ti-check"></i> Je savais</button>
+        <button class="grade-btn wrong" onclick="gradeFlashcard(false, this)"><i class="ti ti-x"></i> À revoir</button>
       </div>
     </div>`;
     if(row.Lien_Fiche && row.Lien_Fiche.trim()){
-      html += `<a class="fiche-link" href="${row.Lien_Fiche}" target="_blank">📄 Voir la fiche</a>`;
+      html += `<a class="fiche-link" href="${row.Lien_Fiche}" target="_blank"><i class="ti ti-file-text"></i> Voir la fiche</a>`;
     }
     html += `</div><button class="next-btn" id="nextBtn" onclick="nextCard()">Suivant</button>`;
   }
@@ -550,11 +600,11 @@ function renderRecap(){
   markDone(currentQuiz.ID_Quiz);
   const total = currentQuestions.length;
   const errorBtn = wrongQuestions.length > 0
-    ? `<br><button class="restart review-errors" onclick="reviewErrors()">🔁 Revoir mes erreurs (${wrongQuestions.length})</button>`
+    ? `<br><button class="restart review-errors" onclick="reviewErrors()"><i class="ti ti-refresh"></i> Revoir mes erreurs (${wrongQuestions.length})</button>`
     : '';
   document.getElementById('cardZone').innerHTML = `
     <div class="recap">
-      <div class="big">${wrongQuestions.length === 0 ? '🎉' : '💪'}</div>
+      <div class="big"><i class="ti ${wrongQuestions.length === 0 ? 'ti-trophy' : 'ti-target-arrow'}"></i></div>
       <h2>Quiz terminé !</h2>
       <p>Score : ${score} / ${total} bonnes réponses</p>
       ${errorBtn}
