@@ -188,6 +188,7 @@
       <div class="sub">Choisis un quiz pour commencer</div>
     </header>
     <div id="status" class="status">Chargement…</div>
+    <select id="anneeSelect" class="matiere-select" style="display:none;" onchange="onAnneeChange()"></select>
     <select id="matiereSelect" class="matiere-select" style="display:none;" onchange="renderHome()"></select>
     <div id="progressSection"></div>
     <div id="homeContent"></div>
@@ -252,6 +253,7 @@ let pendingQuizId = null;
 const statusEl = document.getElementById('status');
 const homeContent = document.getElementById('homeContent');
 const matiereSelect = document.getElementById('matiereSelect');
+const anneeSelect = document.getElementById('anneeSelect');
 const progressSection = document.getElementById('progressSection');
 
 function getDoneSet(){
@@ -270,7 +272,8 @@ Promise.all([
   allQuizzes = quizzes;
   allQuestions = questions;
   statusEl.style.display = 'none';
-  setupMatiereSelect();
+  setupAnneeSelect();
+  setupMatiereSelectForAnnee();
   renderHome();
 }).catch(err => {
   statusEl.className = 'status error';
@@ -282,12 +285,39 @@ function getMatiere(q){
   return ((q.Matière || q.Matiere || 'Autre').trim()) || 'Autre';
 }
 
-function setupMatiereSelect(){
-  const matieres = [...new Set(allQuizzes.map(getMatiere))];
-  if(matieres.length <= 1) return;
+function getAnnee(q){
+  return ((q.Année || q.Annee || '').trim());
+}
+
+function setupAnneeSelect(){
+  const annees = [...new Set(allQuizzes.map(getAnnee).filter(a => a))];
+  if(annees.length <= 1){
+    anneeSelect.style.display = 'none';
+    return;
+  }
+  anneeSelect.style.display = 'block';
+  anneeSelect.innerHTML = `<option value="__all__">Toutes les années</option>` +
+    annees.map(a => `<option value="${escapeAttr(a)}">${escapeHtml(a)}</option>`).join('');
+}
+
+function onAnneeChange(){
+  setupMatiereSelectForAnnee();
+  renderHome();
+}
+
+function setupMatiereSelectForAnnee(){
+  const selectedAnnee = anneeSelect.style.display !== 'none' ? anneeSelect.value : '__all__';
+  const scoped = selectedAnnee === '__all__' ? allQuizzes : allQuizzes.filter(q => getAnnee(q) === selectedAnnee);
+  const matieres = [...new Set(scoped.map(getMatiere))];
+  if(matieres.length <= 1){
+    matiereSelect.style.display = 'none';
+    return;
+  }
   matiereSelect.style.display = 'block';
+  const prevVal = matiereSelect.value;
   matiereSelect.innerHTML = `<option value="__all__">Toutes les matières</option>` +
     matieres.map(m => `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
+  if([...matiereSelect.options].some(o => o.value === prevVal)) matiereSelect.value = prevVal;
 }
 
 function renderHome(){
@@ -296,11 +326,20 @@ function renderHome(){
     progressSection.innerHTML = '';
     return;
   }
+  const selectedAnnee = anneeSelect.style.display !== 'none' ? anneeSelect.value : '__all__';
+  const quizzesInAnnee = selectedAnnee === '__all__' ? allQuizzes : allQuizzes.filter(q => getAnnee(q) === selectedAnnee);
+
+  if(quizzesInAnnee.length === 0){
+    homeContent.innerHTML = '<div class="empty">Aucun quiz pour cette année pour l\'instant.</div>';
+    progressSection.innerHTML = '';
+    return;
+  }
+
   const selected = matiereSelect.style.display !== 'none' ? matiereSelect.value : '__all__';
   const doneSet = getDoneSet();
 
   const byMatiere = {};
-  allQuizzes.forEach(q => {
+  quizzesInAnnee.forEach(q => {
     const m = getMatiere(q);
     if(!byMatiere[m]) byMatiere[m] = [];
     byMatiere[m].push(q);
