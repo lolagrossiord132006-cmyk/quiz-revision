@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -16,9 +17,11 @@
     background:var(--bg); color:var(--text); min-height:100vh;
   }
   .wrap{max-width:520px; margin:0 auto; padding:24px 18px 60px;}
+  .screen{display:none;}
+  .screen.active{display:block;}
 
   /* ---------- HOME ---------- */
-  header.home{margin-bottom:22px;}
+  header.home{margin-bottom:20px;}
   header.home h1{font-size:24px; margin:0 0 4px; color:var(--accent-dark); letter-spacing:-0.01em;}
   header.home .sub{color:var(--text-dim); font-size:13.5px;}
 
@@ -28,6 +31,26 @@
   }
   .status.error{color:#B4482F; border-color:#F0C4BE; background:#FBEEEB;}
 
+  select.matiere-select{
+    width:100%; background:var(--card); border:1.5px solid var(--line); border-radius:12px;
+    padding:12px 14px; font-size:14.5px; color:var(--text); font-family:inherit; margin-bottom:20px;
+    appearance:none; -webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236E8360'><path d='M5 8l5 5 5-5z'/></svg>");
+    background-repeat:no-repeat; background-position:right 14px center; background-size:16px;
+  }
+
+  .progress-section{margin-bottom:24px;}
+  .progress-section-title{font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); margin-bottom:10px;}
+  .matiere-progress-row{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin-bottom:8px;
+  }
+  .mpr-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; font-size:13px;}
+  .mpr-name{font-weight:600;}
+  .mpr-count{color:var(--text-dim); font-size:12px;}
+  .mpr-track{height:6px; background:var(--line); border-radius:10px; overflow:hidden;}
+  .mpr-fill{height:100%; background:var(--accent); border-radius:10px; transition:width .3s;}
+  .mpr-check{color:var(--accent); font-size:13px; margin-left:4px;}
+
   .matiere-group{margin-bottom:22px;}
   .matiere-label{
     font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
@@ -36,28 +59,42 @@
   .quiz-card{
     background:var(--card); border-radius:var(--radius); padding:18px 20px; margin-bottom:10px;
     border:1px solid var(--line); cursor:pointer; display:flex; align-items:center; gap:14px;
-    transition:transform .12s;
+    transition:transform .12s; position:relative;
   }
   .quiz-card:active{transform:scale(0.98);}
   .quiz-emoji{font-size:26px; flex-shrink:0;}
   .quiz-info{flex:1; min-width:0;}
-  .quiz-title{font-size:15.5px; font-weight:600; margin-bottom:3px;}
+  .quiz-title{font-size:15.5px; font-weight:600; margin-bottom:3px; display:flex; align-items:center; gap:6px;}
   .quiz-count{font-size:12px; color:var(--text-dim);}
   .quiz-arrow{color:var(--text-dim); font-size:18px;}
+  .done-badge{font-size:12px; color:var(--accent);}
 
   .empty{text-align:center; color:var(--text-dim); padding:50px 20px; font-size:14px;}
 
-  /* ---------- SESSION ---------- */
-  .session{display:none;}
-  .session.active{display:block;}
-  header.home.hidden, .home-content.hidden{display:none;}
-
-  .session-top{display:flex; align-items:center; gap:12px; margin-bottom:18px;}
+  /* ---------- OPTIONS ---------- */
+  .top-bar{display:flex; align-items:center; gap:12px; margin-bottom:22px;}
   .back-btn{
     background:var(--card); border:1px solid var(--line); border-radius:10px; width:38px; height:38px;
     display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--accent-dark);
     cursor:pointer; flex-shrink:0;
   }
+  .top-title{font-size:17px; font-weight:700;}
+
+  .opt-group{margin-bottom:22px;}
+  .opt-label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:10px;}
+  .opt-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .opt-chip{
+    padding:10px 16px; border-radius:20px; font-size:13.5px; font-weight:600; background:var(--card);
+    border:1.5px solid var(--line); color:var(--text-dim); cursor:pointer;
+  }
+  .opt-chip.active{background:var(--accent); border-color:var(--accent); color:white;}
+
+  .start-btn{
+    width:100%; background:var(--accent-dark); color:white; border:none; padding:15px; border-radius:14px;
+    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px;
+  }
+
+  /* ---------- SESSION ---------- */
   .session-title{flex:1; min-width:0;}
   .session-title .name{font-size:15px; font-weight:700;}
   .session-title .pos{font-size:12px; color:var(--text-dim);}
@@ -111,24 +148,53 @@
   .recap p{color:var(--text-dim); font-size:14px; margin-bottom:26px;}
   .recap .restart{
     background:var(--accent); color:white; border:none; padding:13px 24px; border-radius:12px;
-    font-size:14.5px; font-weight:600; cursor:pointer; font-family:inherit;
+    font-size:14.5px; font-weight:600; cursor:pointer; font-family:inherit; margin:0 6px;
   }
+  .recap .ghost{background:transparent; color:var(--accent-dark); border:1.5px solid var(--line);}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div id="homeScreen">
+  <!-- HOME -->
+  <div id="homeScreen" class="screen active">
     <header class="home">
       <h1>🎓 Révisions</h1>
       <div class="sub">Choisis un quiz pour commencer</div>
     </header>
     <div id="status" class="status">Chargement…</div>
+    <select id="matiereSelect" class="matiere-select" style="display:none;" onchange="renderHome()"></select>
+    <div id="progressSection"></div>
     <div id="homeContent"></div>
   </div>
 
-  <div id="sessionScreen" class="session">
-    <div class="session-top">
+  <!-- OPTIONS -->
+  <div id="optionsScreen" class="screen">
+    <div class="top-bar">
+      <div class="back-btn" onclick="goHome()">←</div>
+      <div class="top-title" id="optQuizTitle"></div>
+    </div>
+    <div class="opt-group">
+      <div class="opt-label">Type de questions</div>
+      <div class="opt-row">
+        <div class="opt-chip active" data-val="tout" onclick="setOpt('type','tout',this)">Mélange</div>
+        <div class="opt-chip" data-val="qcm" onclick="setOpt('type','qcm',this)">QCM seulement</div>
+        <div class="opt-chip" data-val="flashcard" onclick="setOpt('type','flashcard',this)">Flashcards seulement</div>
+      </div>
+    </div>
+    <div class="opt-group">
+      <div class="opt-label">Ordre</div>
+      <div class="opt-row">
+        <div class="opt-chip active" data-val="ordre" onclick="setOpt('shuffle',false,this)">Dans l'ordre</div>
+        <div class="opt-chip" data-val="aleatoire" onclick="setOpt('shuffle',true,this)">Aléatoire</div>
+      </div>
+    </div>
+    <button class="start-btn" onclick="startQuizWithOptions()">Commencer</button>
+  </div>
+
+  <!-- SESSION -->
+  <div id="sessionScreen" class="screen">
+    <div class="top-bar">
       <div class="back-btn" onclick="goHome()">←</div>
       <div class="session-title">
         <div class="name" id="sessionName"></div>
@@ -144,6 +210,7 @@
 <script>
 const SHEET_ID = "1yTjT6wCStPIL9E-JoCJfIWe8XOwjKSNOBmQvjL7MaDw";
 const API_BASE = "https://opensheet.elk.sh/" + SHEET_ID;
+const STORAGE_KEY = "revisions_done_quizzes";
 
 const EMOJIS = ["📘","🧠","🔬","📗","🩺","📙","🦻","📕"];
 
@@ -153,12 +220,22 @@ let currentQuiz = null;
 let currentQuestions = [];
 let currentIndex = 0;
 let score = 0;
-let answeredCount = 0;
+let pendingOptions = { type: 'tout', shuffle: false };
+let pendingQuizId = null;
 
 const statusEl = document.getElementById('status');
 const homeContent = document.getElementById('homeContent');
-const homeScreen = document.getElementById('homeScreen');
-const sessionScreen = document.getElementById('sessionScreen');
+const matiereSelect = document.getElementById('matiereSelect');
+const progressSection = document.getElementById('progressSection');
+
+function getDoneSet(){
+  try{ return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []); }catch(e){ return new Set(); }
+}
+function markDone(idQuiz){
+  const s = getDoneSet();
+  s.add(String(idQuiz));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...s]));
+}
 
 Promise.all([
   fetch(API_BASE + "/Quiz").then(r => { if(!r.ok) throw new Error('Quiz sheet: HTTP ' + r.status); return r.json(); }),
@@ -167,6 +244,7 @@ Promise.all([
   allQuizzes = quizzes;
   allQuestions = questions;
   statusEl.style.display = 'none';
+  setupMatiereSelect();
   renderHome();
 }).catch(err => {
   statusEl.className = 'status error';
@@ -174,26 +252,62 @@ Promise.all([
   console.error(err);
 });
 
+function getMatiere(q){
+  return ((q.Matière || q.Matiere || 'Autre').trim()) || 'Autre';
+}
+
+function setupMatiereSelect(){
+  const matieres = [...new Set(allQuizzes.map(getMatiere))];
+  if(matieres.length <= 1) return;
+  matiereSelect.style.display = 'block';
+  matiereSelect.innerHTML = `<option value="__all__">Toutes les matières</option>` +
+    matieres.map(m => `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
+}
+
 function renderHome(){
   if(allQuizzes.length === 0){
     homeContent.innerHTML = '<div class="empty">Aucun quiz pour l\'instant.<br>Ajoute une ligne dans l\'onglet "Quiz" de ton Sheet.</div>';
+    progressSection.innerHTML = '';
     return;
   }
+  const selected = matiereSelect.style.display !== 'none' ? matiereSelect.value : '__all__';
+  const doneSet = getDoneSet();
+
   const byMatiere = {};
   allQuizzes.forEach(q => {
-    const m = (q.Matière || q.Matiere || 'Autre').trim() || 'Autre';
+    const m = getMatiere(q);
     if(!byMatiere[m]) byMatiere[m] = [];
     byMatiere[m].push(q);
   });
 
-  homeContent.innerHTML = Object.entries(byMatiere).map(([matiere, quizzes]) => {
-    const cards = quizzes.map((q, i) => {
+  // Progress section (always shows all matières, regardless of filter)
+  progressSection.innerHTML = `<div class="progress-section">
+    <div class="progress-section-title">Progression</div>
+    ${Object.entries(byMatiere).map(([matiere, quizzes]) => {
+      const total = quizzes.length;
+      const done = quizzes.filter(q => doneSet.has(String(q.ID_Quiz))).length;
+      const pct = total > 0 ? Math.round((done/total)*100) : 0;
+      return `<div class="matiere-progress-row">
+        <div class="mpr-top">
+          <span class="mpr-name">${escapeHtml(matiere)}</span>
+          <span class="mpr-count">${done}/${total} ${done===total && total>0 ? '<span class="mpr-check">✓</span>' : ''}</span>
+        </div>
+        <div class="mpr-track"><div class="mpr-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  const groupsToShow = selected === '__all__' ? Object.entries(byMatiere) : Object.entries(byMatiere).filter(([m]) => m === selected);
+
+  homeContent.innerHTML = groupsToShow.map(([matiere, quizzes]) => {
+    const cards = quizzes.map((q) => {
       const count = allQuestions.filter(qu => String(qu.ID_Quiz).trim() === String(q.ID_Quiz).trim()).length;
       const emoji = EMOJIS[Math.abs(hashCode(q.Titre || '')) % EMOJIS.length];
-      return `<div class="quiz-card" onclick="openQuiz('${escapeAttr(q.ID_Quiz)}')">
+      const isDone = doneSet.has(String(q.ID_Quiz));
+      return `<div class="quiz-card" onclick="openOptions('${escapeAttr(q.ID_Quiz)}')">
         <span class="quiz-emoji">${emoji}</span>
         <div class="quiz-info">
-          <div class="quiz-title">${escapeHtml(q.Titre || 'Sans titre')}</div>
+          <div class="quiz-title">${escapeHtml(q.Titre || 'Sans titre')} ${isDone ? '<span class="done-badge">✓</span>' : ''}</div>
           <div class="quiz-count">${count} question${count>1?'s':''}</div>
         </div>
         <span class="quiz-arrow">›</span>
@@ -212,25 +326,73 @@ function hashCode(str){
   return hash;
 }
 
-function openQuiz(idQuiz){
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome(){
+  renderHome();
+  showScreen('homeScreen');
+}
+
+/* ---------- OPTIONS SCREEN ---------- */
+function openOptions(idQuiz){
+  pendingQuizId = idQuiz;
+  pendingOptions = { type: 'tout', shuffle: false };
+  const quiz = allQuizzes.find(q => String(q.ID_Quiz).trim() === String(idQuiz).trim());
+  document.getElementById('optQuizTitle').textContent = quiz ? quiz.Titre : '';
+  document.querySelectorAll('#optionsScreen .opt-chip').forEach(c => c.classList.remove('active'));
+  document.querySelector('#optionsScreen .opt-chip[data-val="tout"]').classList.add('active');
+  document.querySelector('#optionsScreen .opt-chip[data-val="ordre"]').classList.add('active');
+  showScreen('optionsScreen');
+}
+
+function setOpt(key, val, el){
+  pendingOptions[key] = val;
+  const group = el.parentElement;
+  group.querySelectorAll('.opt-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function startQuizWithOptions(){
+  openQuiz(pendingQuizId, pendingOptions);
+}
+
+/* ---------- SESSION ---------- */
+function openQuiz(idQuiz, options){
   currentQuiz = allQuizzes.find(q => String(q.ID_Quiz).trim() === String(idQuiz).trim());
-  currentQuestions = allQuestions.filter(q => String(q.ID_Quiz).trim() === String(idQuiz).trim());
+  let qs = allQuestions.filter(q => String(q.ID_Quiz).trim() === String(idQuiz).trim());
+
+  if(options && options.type && options.type !== 'tout'){
+    qs = qs.filter(q => (q.Type||'').trim().toLowerCase() === options.type);
+  }
+  if(options && options.shuffle){
+    qs = shuffleArray(qs.slice());
+  }
+
+  currentQuestions = qs;
   currentIndex = 0;
   score = 0;
-  answeredCount = 0;
-  homeScreen.style.display = 'none';
-  sessionScreen.classList.add('active');
+  showScreen('sessionScreen');
   document.getElementById('sessionName').textContent = currentQuiz ? currentQuiz.Titre : '';
   renderCard();
 }
 
-function goHome(){
-  sessionScreen.classList.remove('active');
-  homeScreen.style.display = 'block';
+function shuffleArray(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 function renderCard(){
   const total = currentQuestions.length;
+  if(total === 0){
+    document.getElementById('cardZone').innerHTML = `<div class="empty">Aucune question ne correspond à ce filtre pour ce quiz.</div>`;
+    return;
+  }
   if(currentIndex >= total){
     renderRecap();
     return;
@@ -277,7 +439,6 @@ function answerQCM(btn, correct){
   });
   if(letter !== correct) btn.classList.add('wrong');
   else score++;
-  answeredCount++;
   document.getElementById('nextBtn').classList.add('show');
 }
 
@@ -296,14 +457,14 @@ function renderRecap(){
   document.getElementById('progressFill').style.width = '100%';
   document.getElementById('sessionPos').textContent = 'Terminé';
   const hasQCM = currentQuestions.some(q => (q.Type||'').trim().toLowerCase() === 'qcm');
+  markDone(currentQuiz.ID_Quiz);
   document.getElementById('cardZone').innerHTML = `
     <div class="recap">
       <div class="big">🎉</div>
       <h2>Quiz terminé !</h2>
       <p>${hasQCM ? `Score : ${score} / ${currentQuestions.filter(q=>(q.Type||'').trim().toLowerCase()==='qcm').length} bonnes réponses` : `${currentQuestions.length} cartes revues`}</p>
-      <button class="restart" onclick="openQuiz('${escapeAttr(currentQuiz.ID_Quiz)}')">Recommencer</button>
-      <br><br>
-      <button class="back-btn" style="display:inline-flex; width:auto; padding:0 18px;" onclick="goHome()">← Retour aux quiz</button>
+      <button class="restart" onclick="openOptions('${escapeAttr(currentQuiz.ID_Quiz)}')">Recommencer</button>
+      <button class="restart ghost" onclick="goHome()">Retour aux quiz</button>
     </div>`;
 }
 
